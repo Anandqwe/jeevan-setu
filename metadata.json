@@ -1,0 +1,9 @@
+{
+  "name": "Jeevan Setu",
+  "description": "An AI-powered emergency response coordination platform connecting patients, ambulance drivers, and hospitals.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
