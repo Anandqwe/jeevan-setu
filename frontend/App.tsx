@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { LandingView } from './components/LandingView';
-import { PatientView } from './components/PatientView';
+import { PatientLoginWrapper } from './components/PatientLoginWrapper';
 import { DriverView } from './components/DriverView';
 import { HospitalView } from './components/HospitalView';
 import { BystanderView } from './components/BystanderView';
@@ -149,7 +149,7 @@ const App: React.FC = () => {
       case 'landing':
         return <LandingView onNavigate={setCurrentView} />;
       case 'patient':
-        return <PatientView status={simStatus} onSOS={handleSOS} onCancel={handleCancel} driverInfo={driverInfo} />;
+        return <PatientLoginWrapper status={simStatus} onSOS={handleSOS} onCancel={handleCancel} driverInfo={driverInfo} />;
       case 'driver':
         return <DriverView status={simStatus} onAccept={handleDriverAccept} pendingRequest={pendingRequest} />;
       case 'hospital':

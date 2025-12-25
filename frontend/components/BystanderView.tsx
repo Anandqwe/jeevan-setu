@@ -140,7 +140,7 @@ export const BystanderView: React.FC<BystanderViewProps> = ({
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/report-incident",
+        "http://localhost:4000/api/bystander/report",
         {
           method: "POST",
           headers: {

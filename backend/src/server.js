@@ -5,21 +5,23 @@ const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 const connectDB = require('./config/db');
+
+// Import models to register them
+require('./models/User');
+require('./models/Hospital');
+require('./models/PatientProfile');
+
 const authRoutes = require('./routes/authRoutes');
 const patientRoutes = require('./routes/patientRoutes');
-const hospitalRoutes = require('./routes/hospitalRoutes');
+const bystanderRoutes = require('./routes/bystanderRoutes');
 
 // Connect to Database
 connectDB();
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Increase limit for file uploads
-
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/patient', patientRoutes);
-app.use('/api/hospitals', hospitalRoutes);
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -236,6 +238,10 @@ function deg2rad(deg) {
 }
 
 // ============ REST ENDPOINTS (for debugging) ============
+app.use('/api/auth', authRoutes);
+app.use('/api/patient', patientRoutes);
+app.use('/api/bystander', bystanderRoutes);
+
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
