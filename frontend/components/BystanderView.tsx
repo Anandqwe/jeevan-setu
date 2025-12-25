@@ -29,6 +29,11 @@ export const BystanderView: React.FC<BystanderViewProps> = ({
   const [voiceText, setVoiceText] = useState("");
   const [language, setLanguage] = useState<"en-IN" | "hi-IN" | "mr-IN">("en-IN");
 
+  // 📍 Location
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
+    null
+  );
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
 
@@ -81,6 +86,27 @@ export const BystanderView: React.FC<BystanderViewProps> = ({
     recognitionRef.current = recognition;
   };
 
+  /* ---------------- LOCATION ---------------- */
+
+  const getLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation not supported");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+      },
+      () => {
+        alert("Location permission denied");
+      }
+    );
+  };
+
   /* ---------------- GEMINI ANALYSIS ---------------- */
 
   const performAnalysis = async (base64Image: string) => {
@@ -98,6 +124,44 @@ export const BystanderView: React.FC<BystanderViewProps> = ({
       console.error("Failed to parse analysis result", error);
     } finally {
       setAnalyzing(false);
+    }
+  };
+
+  /* ---------------- SUBMIT TO BACKEND ---------------- */
+
+  const submitReport = async () => {
+    if (!image || !report) return;
+
+    if (!location) {
+      getLocation();
+      alert("Fetching location, please tap submit again");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/report-incident",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            imageBase64: image,
+            voiceText,
+            aiReport: report,
+            location,
+          }),
+        }
+      );
+
+      const data = await response.json();
+      console.log("Incident stored:", data);
+
+      onReportSent();
+    } catch (error) {
+      console.error("Failed to submit report", error);
+      alert("Failed to submit incident");
     }
   };
 
@@ -192,7 +256,7 @@ export const BystanderView: React.FC<BystanderViewProps> = ({
           />
         </div>
 
-        {/* VOICE (OPTIONAL INFO ONLY) */}
+        {/* VOICE (OPTIONAL) */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-4">
           <h3 className="font-semibold">
             Describe What Happened (Optional)
@@ -200,9 +264,7 @@ export const BystanderView: React.FC<BystanderViewProps> = ({
 
           <select
             value={language}
-            onChange={(e) =>
-              setLanguage(e.target.value as any)
-            }
+            onChange={(e) => setLanguage(e.target.value as any)}
             className="w-full border rounded-lg px-3 py-2"
           >
             <option value="en-IN">English</option>
@@ -260,10 +322,9 @@ export const BystanderView: React.FC<BystanderViewProps> = ({
                 {report.immediateAction}
               </p>
 
-              {/* ✅ SUBMIT ONLY IF IMAGE VALID */}
               {isImageValid ? (
                 <button
-                  onClick={onReportSent}
+                  onClick={submitReport}
                   className="mt-6 w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2"
                 >
                   <CheckCircle size={20} />
