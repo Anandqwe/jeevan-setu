@@ -6,16 +6,20 @@ const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
+const patientRoutes = require('./routes/patientRoutes');
+const hospitalRoutes = require('./routes/hospitalRoutes');
 
 // Connect to Database
 connectDB();
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Increase limit for file uploads
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/patient', patientRoutes);
+app.use('/api/hospitals', hospitalRoutes);
 
 const server = http.createServer(app);
 const io = new Server(server, {

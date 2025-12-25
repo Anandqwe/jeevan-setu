@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Phone, X, MapPin, User, Navigation, ShieldAlert, Timer, Lock, ArrowRight, HeartPulse } from 'lucide-react';
+import { AlertTriangle, Phone, X, MapPin, User, Navigation, ShieldAlert, Timer, Lock, ArrowRight, HeartPulse, Settings, UserCircle } from 'lucide-react';
 import { SimulationStatus } from '../types';
 import { auth, googleProvider } from '../services/firebaseConfig';
 import { signInWithPopup } from 'firebase/auth';
+import { authAPI, patientAPI } from '../services/api';
+import { ProfileForm } from './ProfileForm';
 
 interface PatientViewProps {
   status: SimulationStatus;
@@ -20,6 +22,9 @@ export const PatientView: React.FC<PatientViewProps> = ({ status, onSOS, onCance
   const [internalPhase, setInternalPhase] = useState<InternalPhase>('idle');
   const [countdown, setCountdown] = useState(3);
   const [cancelSlide, setCancelSlide] = useState(0);
+  const [showProfileForm, setShowProfileForm] = useState(false);
+  const [profileComplete, setProfileComplete] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ name?: string; email?: string } | null>(null);
   
   // Form States
   const [formData, setFormData] = useState({
@@ -28,6 +33,32 @@ export const PatientView: React.FC<PatientViewProps> = ({ status, onSOS, onCance
     password: ''
   });
   const [error, setError] = useState('');
+
+  // Check for existing auth on mount
+  useEffect(() => {
+    const token = localStorage.getItem('jeevan_setu_token');
+    const user = localStorage.getItem('jeevan_setu_user');
+    if (token && user) {
+      setIsLoggedIn(true);
+      setCurrentUser(JSON.parse(user));
+      checkProfileStatus();
+    }
+  }, []);
+
+  // Check if profile is complete
+  const checkProfileStatus = async () => {
+    try {
+      const response = await patientAPI.getProfile();
+      if (response.exists && response.profile?.emergencyReady) {
+        setProfileComplete(true);
+      } else {
+        setProfileComplete(false);
+      }
+    } catch (err) {
+      console.error('Failed to check profile:', err);
+      setProfileComplete(false);
+    }
+  };
 
   // Sync internal phase if global status is reset
   useEffect(() => {
@@ -81,19 +112,16 @@ export const PatientView: React.FC<PatientViewProps> = ({ status, onSOS, onCance
     e.preventDefault();
     setError('');
     try {
-      const res = await fetch('http://localhost:3000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: formData.phone, password: formData.password })
-      });
-      const data = await res.json();
-      if (data.success) {
+      const response = await authAPI.login({ phone: formData.phone, password: formData.password });
+      if (response.success) {
         setIsLoggedIn(true);
+        setCurrentUser(response.user || null);
+        checkProfileStatus();
       } else {
-        setError(data.message || 'Login failed');
+        setError(response.message || 'Login failed');
       }
-    } catch (err) {
-      setError('Failed to connect to server');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to connect to server');
     }
   };
 
@@ -101,49 +129,61 @@ export const PatientView: React.FC<PatientViewProps> = ({ status, onSOS, onCance
     e.preventDefault();
     setError('');
     try {
-      const res = await fetch('http://localhost:3000/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-      const data = await res.json();
-      if (data.success) {
+      const response = await authAPI.register(formData);
+      if (response.success) {
         setIsLoggedIn(true);
+        setCurrentUser(response.user || null);
+        // New users need to complete profile
+        setShowProfileForm(true);
       } else {
-        setError(data.message || 'Registration failed');
+        setError(response.message || 'Registration failed');
       }
-    } catch (err) {
-      setError('Failed to connect to server');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to connect to server');
     }
   };
 
   const handleGoogleLogin = async () => {
     try {
+      setError('');
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       
       // Send to backend to create/update user in MongoDB
-      const res = await fetch('http://localhost:3000/api/auth/google', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: user.displayName,
-          email: user.email,
-          googleId: user.uid,
-          photoUrl: user.photoURL
-        })
+      const response = await authAPI.googleLogin({
+        name: user.displayName,
+        email: user.email,
+        googleId: user.uid,
+        photoUrl: user.photoURL
       });
       
-      const data = await res.json();
-      if (data.success) {
+      if (response.success) {
         setIsLoggedIn(true);
+        setCurrentUser(response.user || null);
+        checkProfileStatus();
       } else {
         setError('Google login failed on server');
       }
     } catch (error: any) {
       console.error(error);
+      if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {
+        // User cancelled the login, no need to show an error
+        return;
+      }
       setError(error.message || 'Google login failed');
     }
+  };
+
+  const handleLogout = () => {
+    authAPI.logout();
+    setIsLoggedIn(false);
+    setCurrentUser(null);
+    setProfileComplete(false);
+  };
+
+  const handleProfileComplete = () => {
+    setShowProfileForm(false);
+    setProfileComplete(true);
   };
 
   if (!isLoggedIn) {
@@ -347,6 +387,16 @@ export const PatientView: React.FC<PatientViewProps> = ({ status, onSOS, onCance
 
   return (
     <div className="min-h-[100dvh] bg-gray-50 relative overflow-hidden flex flex-col">
+      {/* Profile Form Modal */}
+      {showProfileForm && (
+        <ProfileForm
+          onComplete={handleProfileComplete}
+          onClose={() => setShowProfileForm(false)}
+          userEmail={currentUser?.email}
+          userName={currentUser?.name}
+        />
+      )}
+
       {/* Header */}
       <div className="bg-white p-4 shadow-sm z-10 flex justify-between items-center sticky top-0">
         <div className="flex items-center gap-2">
@@ -356,11 +406,30 @@ export const PatientView: React.FC<PatientViewProps> = ({ status, onSOS, onCance
           <span className="font-bold text-gray-800">Jeevan Setu</span>
         </div>
         <div className="flex items-center gap-3">
-          <div className="text-xs font-medium bg-green-100 text-green-700 px-2 py-1 rounded-full">
-            GPS Active
-          </div>
+          {/* Profile Status Badge */}
+          {profileComplete ? (
+            <div className="text-xs font-medium bg-green-100 text-green-700 px-2 py-1 rounded-full flex items-center gap-1">
+              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+              Emergency Ready
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowProfileForm(true)}
+              className="text-xs font-medium bg-orange-100 text-orange-700 px-2 py-1 rounded-full flex items-center gap-1 hover:bg-orange-200 transition-colors"
+            >
+              <Settings size={12} />
+              Setup Profile
+            </button>
+          )}
           <button 
-            onClick={() => setIsLoggedIn(false)}
+            onClick={() => setShowProfileForm(true)}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            title="Edit Profile"
+          >
+            <UserCircle size={20} className="text-gray-600" />
+          </button>
+          <button 
+            onClick={handleLogout}
             className="text-xs font-medium text-gray-500 hover:text-red-600"
           >
             Logout
@@ -377,6 +446,27 @@ export const PatientView: React.FC<PatientViewProps> = ({ status, onSOS, onCance
             <p className="text-gray-500 mb-8 sm:mb-12 text-center text-sm sm:text-base">
               Press the button below to immediately request an ambulance.
             </p>
+
+            {/* Profile Warning */}
+            {!profileComplete && (
+              <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl w-full">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="text-yellow-600 mt-0.5 shrink-0" size={18} />
+                  <div>
+                    <p className="text-sm font-medium text-yellow-800">Profile Incomplete</p>
+                    <p className="text-xs text-yellow-700 mt-1">
+                      Complete your medical profile for faster emergency response.
+                    </p>
+                    <button
+                      onClick={() => setShowProfileForm(true)}
+                      className="mt-2 text-xs font-semibold text-yellow-700 hover:text-yellow-900 underline"
+                    >
+                      Complete Profile Now →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <button
               onClick={handleSOSClick}

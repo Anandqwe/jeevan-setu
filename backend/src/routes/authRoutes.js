@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const { generateToken } = require('../middleware/auth');
 
 // @route   POST /api/auth/register
 // @desc    Register a new user
@@ -20,12 +21,17 @@ router.post('/register', async (req, res) => {
       role: 'patient'
     });
 
+    // Generate JWT token
+    const token = generateToken(user._id);
+
     res.status(201).json({
       success: true,
+      token,
       user: {
         id: user._id,
         name: user.name,
         phone: user.phone,
+        email: user.email,
         role: user.role
       }
     });
@@ -52,12 +58,17 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
+    // Generate JWT token
+    const token = generateToken(user._id);
+
     res.json({
       success: true,
+      token,
       user: {
         id: user._id,
         name: user.name,
         phone: user.phone,
+        email: user.email,
         role: user.role
       }
     });
@@ -93,8 +104,12 @@ router.post('/google', async (req, res) => {
       await user.save();
     }
 
+    // Generate JWT token
+    const token = generateToken(user._id);
+
     res.json({
       success: true,
+      token,
       user: {
         id: user._id,
         name: user.name,
