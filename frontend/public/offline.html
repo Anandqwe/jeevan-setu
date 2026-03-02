@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline — Jeevan Setu</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: #0a0a1a;
+      color: #e8e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+      padding: 2rem;
+    }
+    .offline-container { max-width: 400px; }
+    .offline-icon { font-size: 4rem; margin-bottom: 1rem; }
+    h1 {
+      font-size: 1.6rem;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #ff4757, #ff6b81);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    p { color: rgba(255,255,255,0.6); line-height: 1.6; margin-bottom: 1.5rem; font-size: 0.95rem; }
+    .btn-retry {
+      padding: 0.7rem 2rem;
+      background: linear-gradient(135deg, #ff4757, #e84118);
+      border: none;
+      border-radius: 10px;
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+    .btn-retry:hover { transform: translateY(-2px); }
+  </style>
+</head>
+<body>
+  <div class="offline-container">
+    <div class="offline-icon">📡</div>
+    <h1>You're Offline</h1>
+    <p>Jeevan Setu requires an internet connection for real-time emergency coordination. Please check your connection and try again.</p>
+    <button class="btn-retry" onclick="window.location.reload()">Retry Connection</button>
+  </div>
+</body>
+</html>

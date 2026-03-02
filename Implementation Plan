@@ -1,0 +1,124 @@
+# Jeevan Setu v2 — National-Scale Emergency Command Platform
+
+Transform the existing academic-grade emergency coordination app into a visually stunning, production-ready, government-grade Smart City 112 Command Center.
+
+## Proposed Changes
+
+### Backend Architecture Evolution
+
+Refactor the monolithic `backend/` into a modular service-layer architecture within the same FastAPI app (keeping monorepo, single deploy). All existing routes and models are preserved and enhanced.
+
+---
+
+#### [NEW] [config.py](file:///home/anand/Documents/jeevan-setu/backend/config.py)
+- Centralized settings using `pydantic-settings` (replaces scattered `os.getenv` calls)
+
+#### [models.py](file:///home/anand/Documents/jeevan-setu/backend/models.py)
+- Add `admin` role to `UserRole` enum
+- Add new models: `IncidentTimeline`, `AuditLog`, `ChatMessage`, `Notification`, `RefreshToken`
+- Add indexes and soft-delete support
+
+#### [schemas.py](file:///home/anand/Documents/jeevan-setu/backend/schemas.py)
+- Add schemas for new models (chat, analytics, admin, notifications)
+- Add WebSocket event schemas
+
+#### [dispatch.py](file:///home/anand/Documents/jeevan-setu/backend/dispatch.py)
+- Replace simple Haversine-only logic with weighted scoring: `distance(0.5) + severity_match(0.25) + workload(0.15) + capability(0.1)`
+- Add surge mode detection and hospital load balancing
+
+#### [NEW] [events.py](file:///home/anand/Documents/jeevan-setu/backend/events.py)
+- Event bus abstraction with typed event schemas (IncidentCreated, AmbulanceAssigned, etc.)
+- In-process pub/sub (ready for Redis upgrade)
+
+#### [NEW] [middleware.py](file:///home/anand/Documents/jeevan-setu/backend/middleware.py)
+- Rate limiting middleware, audit logging, structured JSON logging, secure headers
+
+#### [NEW] [routes/admin_routes.py](file:///home/anand/Documents/jeevan-setu/backend/routes/admin_routes.py)
+- System stats, all incidents, all ambulances/hospitals, user management
+
+#### [NEW] [routes/analytics_routes.py](file:///home/anand/Documents/jeevan-setu/backend/routes/analytics_routes.py)
+- Incident trends, response time stats, ambulance utilization, hospital occupancy
+
+#### [NEW] [routes/chat_routes.py](file:///home/anand/Documents/jeevan-setu/backend/routes/chat_routes.py)
+- Chat message CRUD, incident-based chat sessions
+
+#### [main.py](file:///home/anand/Documents/jeevan-setu/backend/main.py)
+- Add new routers, middleware, structured logging setup
+- Enhanced WebSocket handler with chat message support
+
+#### [auth.py](file:///home/anand/Documents/jeevan-setu/backend/auth.py)
+- Add refresh token rotation support
+
+#### [seed.py](file:///home/anand/Documents/jeevan-setu/backend/seed.py)
+- Add admin user, more ambulances/hospitals across multiple cities, sample incidents for demo
+
+---
+
+### Frontend Command Center Redesign
+
+Complete UI overhaul from vanilla CSS to TailwindCSS + Framer Motion. Multi-panel command center layout.
+
+---
+
+#### Frontend Dependencies (TailwindCSS v4, Framer Motion, Zustand, Recharts, Lucide)
+
+#### [NEW] `src/store/` — Zustand stores (auth, dispatch, map, chat, theme)
+#### [NEW] `src/components/ui/` — Reusable UI (StatusBadge, StatCard, ProgressBar, Toast, Skeleton)
+#### [NEW] `src/components/command-center/` — TopBar, LeftPanel, RightPanel, SystemStats
+#### [NEW] `src/components/map/` — LiveMap, AnimatedMarker, HeatmapLayer, IncidentCluster
+#### [NEW] `src/components/chat/` — ChatPanel, MessageBubble, ChatInput
+#### [NEW] `src/components/analytics/` — Charts, TrendPanel, ExportButton
+#### [NEW] `src/pages/CommandCenter.jsx` — Main command center dashboard (admin view)
+#### [NEW] `src/pages/Analytics.jsx` — Full analytics page with Recharts
+
+#### Modified pages: Login, Register, PatientDashboard, EMSDashboard, HospitalDashboard
+- Rewritten with TailwindCSS classes, Framer Motion animations, theme support
+
+---
+
+### DevOps
+
+#### [NEW] `Dockerfile` (backend)
+#### [NEW] `Dockerfile` (frontend) 
+#### [NEW] `docker-compose.yml`
+#### [NEW] `nginx.conf`
+
+---
+
+## Verification Plan
+
+### Build Verification
+```bash
+# Backend: verify imports and startup
+cd /home/anand/Documents/jeevan-setu/backend
+python -c "from main import app; print('Backend imports OK')"
+
+# Frontend: verify build succeeds
+cd /home/anand/Documents/jeevan-setu/frontend
+npm run build
+```
+
+### API Verification
+```bash
+# Health check
+curl http://localhost:8000/api/health
+
+# Login and get token
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"aarav@patient.com","password":"password123"}'
+```
+
+### Browser Verification
+- Navigate to the app in browser and visually verify:
+  - Login page renders with new design
+  - Command Center dashboard loads with 3-panel layout
+  - Map displays with dark tiles and animated markers
+  - Analytics charts render with sample data
+  - Theme toggle works (dark/light)
+  - Real-time WebSocket updates work
+
+### Manual Verification (for user)
+- Login as different roles (patient, ems, hospital, admin) and verify each dashboard
+- Create an emergency and watch the full real-time dispatch flow
+- Verify chat messaging between EMS and patient

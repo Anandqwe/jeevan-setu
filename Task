@@ -1,0 +1,34 @@
+# Jeevan Setu v2 — National-Scale Emergency Command Platform
+
+## Phase 1: Backend Architecture Evolution
+- [/] Refactor backend into modular service layers <!-- id: 0 -->
+  - [ ] Create new backend folder structure (services/, core/, events/) <!-- id: 1 -->
+  - [ ] Add new database models (IncidentTimeline, AuditLogs, ChatMessages, Notifications, RefreshTokens) <!-- id: 2 -->
+  - [ ] Implement intelligent dispatch engine with weighted scoring <!-- id: 3 -->
+  - [ ] Add event bus abstraction and event schemas <!-- id: 4 -->
+  - [ ] Add structured JSON logging <!-- id: 5 -->
+  - [ ] Add admin/analytics routes <!-- id: 6 -->
+  - [ ] Add security hardening (refresh tokens, rate limiting, audit logging) <!-- id: 7 -->
+  - [ ] Add health check + metrics endpoints <!-- id: 8 -->
+
+## Phase 2: Frontend Command Center Redesign
+- [ ] Install and configure TailwindCSS + Framer Motion + Zustand + Recharts <!-- id: 10 -->
+- [ ] Build design system (theme tokens, components) <!-- id: 11 -->
+- [ ] Build Command Center layout (TopBar, LeftPanel, CenterMap, RightPanel) <!-- id: 12 -->
+- [ ] Implement advanced map system (animated markers, heatmap, clustering, route polylines) <!-- id: 13 -->
+- [ ] Build analytics dashboard with charts <!-- id: 14 -->
+- [ ] Build real-time chat system <!-- id: 15 -->
+- [ ] Implement Zustand stores (auth, dispatch, map, chat) <!-- id: 16 -->
+
+## Phase 3: DevOps & Integration
+- [ ] Create Dockerfiles (backend + frontend) <!-- id: 20 -->
+- [ ] Create Docker Compose for local dev <!-- id: 21 -->
+- [ ] Create Nginx reverse proxy config <!-- id: 22 -->
+- [ ] Enhance PWA (offline queue, push notifications UI) <!-- id: 23 -->
+- [ ] Update seed data for demo <!-- id: 24 -->
+
+## Phase 4: Verification & Final Polish
+- [ ] Test backend API endpoints <!-- id: 30 -->
+- [ ] Test frontend UI in browser <!-- id: 31 -->
+- [ ] Verify WebSocket real-time flow <!-- id: 32 -->
+- [ ] Write walkthrough <!-- id: 33 -->
