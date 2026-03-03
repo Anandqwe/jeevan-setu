@@ -10,6 +10,7 @@ Run: python seed.py --append   # adds seed accounts without clearing existing us
 import sys
 import os
 import datetime
+from sqlalchemy import inspect, text
 sys.path.insert(0, os.path.dirname(__file__))
 
 from database import engine, SessionLocal
@@ -18,14 +19,41 @@ from models import (
     Incident, IncidentStatus, Severity
 )
 from auth import hash_password
+from mock_locations import PATIENT_MOCK_LOCATIONS
 
 # Create all tables
 Base.metadata.create_all(bind=engine)
+
+
+def ensure_incident_tracking_columns():
+    inspector = inspect(engine)
+    if "incidents" not in inspector.get_table_names():
+        return
+
+    ddl = [
+        "ALTER TABLE incidents ADD COLUMN IF NOT EXISTS patient_reached_hospital BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE incidents ADD COLUMN IF NOT EXISTS ambulance_last_lat DOUBLE PRECISION",
+        "ALTER TABLE incidents ADD COLUMN IF NOT EXISTS ambulance_last_lng DOUBLE PRECISION",
+        "ALTER TABLE incidents ADD COLUMN IF NOT EXISTS ambulance_last_seen_at TIMESTAMP",
+        "ALTER TABLE incidents ADD COLUMN IF NOT EXISTS arrived_at_hospital_at TIMESTAMP",
+        "ALTER TABLE incidents ADD COLUMN IF NOT EXISTS handover_completed_at TIMESTAMP",
+    ]
+
+    with engine.begin() as conn:
+        for stmt in ddl:
+            conn.execute(text(stmt))
+
+
+ensure_incident_tracking_columns()
 
 db = SessionLocal()
 
 force = "--force" in sys.argv
 append = "--append" in sys.argv
+
+
+def utc_now_naive() -> datetime.datetime:
+    return datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
 
 try:
     existing = db.query(User).first()
@@ -144,7 +172,11 @@ try:
                         status=IncidentStatus.completed,
                         description="Road accident near India Gate",
                         response_time_seconds=420,
-                        created_at=datetime.datetime.utcnow() - datetime.timedelta(days=5),
+                        hospital_ready=True,
+                        patient_reached_hospital=True,
+                        created_at=utc_now_naive() - datetime.timedelta(days=5),
+                        arrived_at_hospital_at=utc_now_naive() - datetime.timedelta(days=5) + datetime.timedelta(minutes=35),
+                        handover_completed_at=utc_now_naive() - datetime.timedelta(days=5) + datetime.timedelta(minutes=55),
                     ),
                     Incident(
                         patient_id=aarav.id,
@@ -155,7 +187,11 @@ try:
                         status=IncidentStatus.completed,
                         description="Chest pain at Saket Mall",
                         response_time_seconds=360,
-                        created_at=datetime.datetime.utcnow() - datetime.timedelta(days=3),
+                        hospital_ready=True,
+                        patient_reached_hospital=True,
+                        created_at=utc_now_naive() - datetime.timedelta(days=3),
+                        arrived_at_hospital_at=utc_now_naive() - datetime.timedelta(days=3) + datetime.timedelta(minutes=28),
+                        handover_completed_at=utc_now_naive() - datetime.timedelta(days=3) + datetime.timedelta(minutes=45),
                     ),
                     Incident(
                         patient_id=aarav.id,
@@ -166,7 +202,11 @@ try:
                         status=IncidentStatus.completed,
                         description="Heart attack at Connaught Place",
                         response_time_seconds=300,
-                        created_at=datetime.datetime.utcnow() - datetime.timedelta(days=1),
+                        hospital_ready=True,
+                        patient_reached_hospital=True,
+                        created_at=utc_now_naive() - datetime.timedelta(days=1),
+                        arrived_at_hospital_at=utc_now_naive() - datetime.timedelta(days=1) + datetime.timedelta(minutes=22),
+                        handover_completed_at=utc_now_naive() - datetime.timedelta(days=1) + datetime.timedelta(minutes=38),
                     ),
                 ]
 
@@ -180,7 +220,11 @@ try:
                         status=IncidentStatus.completed,
                         description="Minor injury at Hauz Khas",
                         response_time_seconds=600,
-                        created_at=datetime.datetime.utcnow() - datetime.timedelta(days=2),
+                        hospital_ready=True,
+                        patient_reached_hospital=True,
+                        created_at=utc_now_naive() - datetime.timedelta(days=2),
+                        arrived_at_hospital_at=utc_now_naive() - datetime.timedelta(days=2) + datetime.timedelta(minutes=48),
+                        handover_completed_at=utc_now_naive() - datetime.timedelta(days=2) + datetime.timedelta(minutes=70),
                     ))
 
                 db.add_all(sample_incidents)
@@ -212,6 +256,7 @@ try:
     print("           lilavati@hospital.com")
     print("           manipal@hospital.com")
     print("─" * 50)
+    print(f"Mock patient locations loaded: {len(PATIENT_MOCK_LOCATIONS)}")
 
 except Exception as e:
     db.rollback()

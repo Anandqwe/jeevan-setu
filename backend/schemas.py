@@ -106,6 +106,12 @@ class EmergencyRequest(BaseModel):
     description: str = ""
 
 
+class MockLocationOut(BaseModel):
+    latitude: float
+    longitude: float
+    label: str = ""
+
+
 class IncidentOut(BaseModel):
     id: int
     patient_id: int
@@ -116,6 +122,15 @@ class IncidentOut(BaseModel):
     severity: str
     status: str
     description: str
+    hospital_ready: bool = False
+    patient_reached_hospital: bool = False
+    eta_minutes: Optional[int] = None
+    distance_km: Optional[float] = None
+    ambulance_last_lat: Optional[float] = None
+    ambulance_last_lng: Optional[float] = None
+    ambulance_last_seen_at: Optional[datetime] = None
+    arrived_at_hospital_at: Optional[datetime] = None
+    handover_completed_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
@@ -134,6 +149,15 @@ class IncidentDetail(BaseModel):
     severity: str
     status: str
     description: str
+    hospital_ready: bool = False
+    patient_reached_hospital: bool = False
+    eta_minutes: Optional[int] = None
+    distance_km: Optional[float] = None
+    ambulance_last_lat: Optional[float] = None
+    ambulance_last_lng: Optional[float] = None
+    ambulance_last_seen_at: Optional[datetime] = None
+    arrived_at_hospital_at: Optional[datetime] = None
+    handover_completed_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
     patient_name: Optional[str] = None
@@ -146,6 +170,18 @@ class IncidentDetail(BaseModel):
 
 class IncidentStatusUpdate(BaseModel):
     status: str  # en_route / on_scene / transporting / completed / cancelled
+
+
+class HospitalReadinessUpdate(BaseModel):
+    hospital_ready: bool
+
+
+class IncidentArrivalUpdate(BaseModel):
+    patient_reached_hospital: bool
+
+
+class IncidentHandoverUpdate(BaseModel):
+    handover_completed: bool
 
 
 # ─── Incident Timeline ──────────────────────────────────────────────────────

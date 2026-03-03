@@ -103,21 +103,21 @@ export default function PatientDashboard() {
   };
 
   const detectLocation = () => {
-    if (!navigator.geolocation) { toast.error('Geolocation not supported'); return; }
     setGettingLocation(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
+    emergencyAPI.getMockLocation()
+      .then((res) => {
+        const loc = res.data;
         setForm((p) => ({
           ...p,
-          latitude: pos.coords.latitude.toFixed(6),
-          longitude: pos.coords.longitude.toFixed(6),
+          latitude: Number(loc.latitude).toFixed(6),
+          longitude: Number(loc.longitude).toFixed(6),
         }));
-        setGettingLocation(false);
-        toast.success('Location detected!');
-      },
-      () => { toast.error('Unable to get location. Please enter manually.'); setGettingLocation(false); },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+        toast.success(`Mock location loaded: ${loc.label || 'Demo point'}`);
+      })
+      .catch(() => {
+        toast.error('Unable to load mock location. Please enter manually.');
+      })
+      .finally(() => setGettingLocation(false));
   };
 
   const handleSubmit = async (e) => {

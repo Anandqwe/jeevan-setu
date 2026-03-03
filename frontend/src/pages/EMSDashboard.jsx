@@ -65,6 +65,34 @@ export default function EMSDashboard() {
   const [tracking, setTracking] = useState(false);
   const trackingRef = useRef(null);
 
+  const mergeIncidentPatch = (patch) => {
+    if (!patch?.incident_id) return;
+    setIncidents((prev) => prev.map((inc) => {
+      if (inc.id !== patch.incident_id) return inc;
+      const next = { ...inc, ...patch };
+      if (patch.latitude != null && patch.longitude != null && inc.ambulance) {
+        next.ambulance = {
+          ...inc.ambulance,
+          latitude: patch.latitude,
+          longitude: patch.longitude,
+        };
+      }
+      return next;
+    }));
+    setActiveIncident((prev) => {
+      if (!prev || prev.id !== patch.incident_id) return prev;
+      const next = { ...prev, ...patch };
+      if (patch.latitude != null && patch.longitude != null && prev.ambulance) {
+        next.ambulance = {
+          ...prev.ambulance,
+          latitude: patch.latitude,
+          longitude: patch.longitude,
+        };
+      }
+      return next;
+    });
+  };
+
   useEffect(() => { loadAmbulance(); loadIncidents(); }, []);
 
   useEffect(() => {
@@ -74,7 +102,11 @@ export default function EMSDashboard() {
         loadIncidents();
       }),
       wsManager.on('incident_update', () => loadIncidents()),
-      wsManager.on('incident_status_update', () => loadIncidents()),
+      wsManager.on('incident_status_update', (data) => mergeIncidentPatch(data)),
+      wsManager.on('ambulance_location_update', (data) => mergeIncidentPatch(data)),
+      wsManager.on('hospital_readiness_update', (data) => mergeIncidentPatch(data)),
+      wsManager.on('patient_arrival_update', (data) => mergeIncidentPatch(data)),
+      wsManager.on('patient_handover_update', (data) => mergeIncidentPatch(data)),
     ];
     return () => { unsubs.forEach((u) => u()); if (trackingRef.current) clearInterval(trackingRef.current); };
   }, []);
@@ -147,6 +179,26 @@ export default function EMSDashboard() {
       toast.error(err.response?.data?.detail || 'Failed to update incident');
     }
   };
+
+  const markArrival = async (incidentId) => {
+    try {
+      const res = await incidentAPI.updateArrival(incidentId, { patient_reached_hospital: true });
+      mergeIncidentPatch({
+        incident_id: res.data.id,
+        patient_reached_hospital: res.data.patient_reached_hospital,
+        arrived_at_hospital_at: res.data.arrived_at_hospital_at,
+        status: res.data.status,
+      });
+      toast.success('Marked patient as arrived at hospital');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to update arrival');
+    }
+  };
+
+  const telemetryAgeSeconds = activeIncident?.ambulance_last_seen_at
+    ? Math.round((Date.now() - new Date(activeIncident.ambulance_last_seen_at).getTime()) / 1000)
+    : null;
+  const telemetryLive = telemetryAgeSeconds != null && telemetryAgeSeconds <= 30;
 
   const mapCenter = ambulance ? [ambulance.latitude, ambulance.longitude] : [28.6139, 77.2090];
   const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
@@ -276,6 +328,23 @@ export default function EMSDashboard() {
                       → {activeIncident.hospital.name}
                     </p>
                   )}
+                  <p className="flex items-center gap-2 text-[var(--text-muted)]">
+                    <Clock size={11} />
+                    ETA: {activeIncident.eta_minutes != null ? `${activeIncident.eta_minutes} min` : 'N/A'} ·
+                    Distance: {activeIncident.distance_km != null ? `${activeIncident.distance_km.toFixed(2)} km` : 'N/A'}
+                  </p>
+                  <p className="flex items-center gap-2 text-[var(--text-muted)]">
+                    <AlertTriangle size={11} className={activeIncident.hospital_ready ? 'text-emerald-400' : 'text-amber-400'} />
+                    Hospital readiness: {activeIncident.hospital_ready ? 'Ready' : 'Pending'}
+                  </p>
+                  <p className="flex items-center gap-2 text-[var(--text-muted)]">
+                    <Activity size={11} className={telemetryLive ? 'text-cyan-400' : 'text-red-400'} />
+                    Telemetry: {telemetryLive ? 'Live' : 'Stale'}{telemetryAgeSeconds != null ? ` (${telemetryAgeSeconds}s ago)` : ''}
+                  </p>
+                  <p className="flex items-center gap-2 text-[var(--text-muted)]">
+                    <MapPin size={11} className={activeIncident.patient_reached_hospital ? 'text-emerald-400' : 'text-[var(--text-muted)]'} />
+                    Arrival: {activeIncident.patient_reached_hospital ? 'Patient reached hospital' : 'In transit'}
+                  </p>
                   {activeIncident.description && (
                     <p className="text-[var(--text-secondary)] italic pt-1">{activeIncident.description}</p>
                   )}
@@ -307,6 +376,17 @@ export default function EMSDashboard() {
                       <Ban size={12} />
                     </motion.button>
                   </div>
+                )}
+                {activeIncident.status === 'transporting' && !activeIncident.patient_reached_hospital && (
+                  <motion.button
+                    onClick={() => markArrival(activeIncident.id)}
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.97 }}
+                    className="w-full mt-2 py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30
+                      text-emerald-400 text-xs font-semibold"
+                  >
+                    Mark Arrived at Hospital
+                  </motion.button>
                 )}
               </Card>
             </div>

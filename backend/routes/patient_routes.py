@@ -7,12 +7,20 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models import User, Incident, AmbulanceStatus, IncidentStatus, Severity
-from schemas import EmergencyRequest, IncidentOut, IncidentDetail, AmbulanceOut, HospitalOut
+from schemas import EmergencyRequest, IncidentOut, IncidentDetail, AmbulanceOut, HospitalOut, MockLocationOut
 from auth import require_role
 from dispatch import find_nearest_ambulance, find_nearest_hospital
 from websocket_manager import manager
+from mock_locations import get_patient_mock_location
 
 router = APIRouter(prefix="/api/emergencies", tags=["Patient / Emergencies"])
+
+
+@router.get("/mock-location", response_model=MockLocationOut)
+def get_mock_location(
+    current_user: User = Depends(require_role("patient")),
+):
+    return get_patient_mock_location(current_user.email)
 
 
 @router.post("/", response_model=IncidentDetail, status_code=status.HTTP_201_CREATED)
@@ -52,6 +60,8 @@ async def create_emergency(
         severity=Severity(data.severity),
         status=IncidentStatus.assigned,
         description=data.description,
+        hospital_ready=True,
+        patient_reached_hospital=False,
     )
     db.add(incident)
 
@@ -71,6 +81,15 @@ async def create_emergency(
         severity=incident.severity.value,
         status=incident.status.value,
         description=incident.description,
+        hospital_ready=incident.hospital_ready,
+        patient_reached_hospital=incident.patient_reached_hospital,
+        eta_minutes=incident.eta_minutes,
+        distance_km=incident.distance_km,
+        ambulance_last_lat=incident.ambulance_last_lat,
+        ambulance_last_lng=incident.ambulance_last_lng,
+        ambulance_last_seen_at=incident.ambulance_last_seen_at,
+        arrived_at_hospital_at=incident.arrived_at_hospital_at,
+        handover_completed_at=incident.handover_completed_at,
         created_at=incident.created_at,
         updated_at=incident.updated_at,
         patient_name=current_user.name,
@@ -145,6 +164,15 @@ def get_my_incidents(
             severity=inc.severity.value,
             status=inc.status.value,
             description=inc.description,
+            hospital_ready=inc.hospital_ready,
+            patient_reached_hospital=inc.patient_reached_hospital,
+            eta_minutes=inc.eta_minutes,
+            distance_km=inc.distance_km,
+            ambulance_last_lat=inc.ambulance_last_lat,
+            ambulance_last_lng=inc.ambulance_last_lng,
+            ambulance_last_seen_at=inc.ambulance_last_seen_at,
+            arrived_at_hospital_at=inc.arrived_at_hospital_at,
+            handover_completed_at=inc.handover_completed_at,
             created_at=inc.created_at,
             updated_at=inc.updated_at,
             patient_name=current_user.name,

@@ -9,6 +9,8 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
 from fastapi.middleware.cors import CORSMiddleware
 from jose import JWTError, jwt
 from dotenv import load_dotenv
+from sqlalchemy import inspect, text
+from sqlalchemy.exc import SQLAlchemyError
 
 from database import engine, get_db, SessionLocal
 from models import Base, User, ChatMessage
@@ -36,6 +38,31 @@ app = FastAPI(
     version=settings.APP_VERSION,
 )
 
+
+def ensure_incident_tracking_columns():
+    """Best-effort schema patch for live tracking columns on existing databases."""
+    inspector = inspect(engine)
+    if "incidents" not in inspector.get_table_names():
+        return
+
+    existing = {c["name"] for c in inspector.get_columns("incidents")}
+    ddl = [
+        "ALTER TABLE incidents ADD COLUMN IF NOT EXISTS patient_reached_hospital BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE incidents ADD COLUMN IF NOT EXISTS ambulance_last_lat DOUBLE PRECISION",
+        "ALTER TABLE incidents ADD COLUMN IF NOT EXISTS ambulance_last_lng DOUBLE PRECISION",
+        "ALTER TABLE incidents ADD COLUMN IF NOT EXISTS ambulance_last_seen_at TIMESTAMP",
+        "ALTER TABLE incidents ADD COLUMN IF NOT EXISTS arrived_at_hospital_at TIMESTAMP",
+        "ALTER TABLE incidents ADD COLUMN IF NOT EXISTS handover_completed_at TIMESTAMP",
+    ]
+
+    if "patient_reached_hospital" not in existing or "ambulance_last_lat" not in existing:
+        try:
+            with engine.begin() as conn:
+                for stmt in ddl:
+                    conn.execute(text(stmt))
+        except SQLAlchemyError as exc:
+            logger.warning("Could not auto-patch incidents schema (insufficient privileges or managed DB): %s", exc)
+
 # ─── Middleware Stack ─────────────────────────────────────────────────────────
 
 app.add_middleware(SecureHeadersMiddleware)
@@ -58,6 +85,10 @@ app.add_middleware(
 @app.on_event("startup")
 def on_startup():
     Base.metadata.create_all(bind=engine)
+    try:
+        ensure_incident_tracking_columns()
+    except Exception as exc:
+        logger.warning(f"Skipping incident schema patching: {exc}")
     logger.info(f"🚀 {settings.APP_NAME} v{settings.APP_VERSION} started")
 
 
@@ -177,14 +208,17 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(default=No
                 if lat is not None and lon is not None:
                     db = SessionLocal()
                     try:
+                        import datetime
                         from models import Ambulance, Incident, IncidentStatus
+                        from dispatch import haversine
+
+                        speed_kmph = 35.0
                         ambulance = db.query(Ambulance).filter(
                             Ambulance.user_id == user_id
                         ).first()
                         if ambulance:
                             ambulance.latitude = lat
                             ambulance.longitude = lon
-                            db.commit()
 
                             active_incidents = db.query(Incident).filter(
                                 Incident.ambulance_id == ambulance.id,
@@ -197,6 +231,21 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(default=No
                             ).all()
 
                             for inc in active_incidents:
+                                distance_km = None
+                                eta_minutes = None
+                                if inc.hospital:
+                                    distance_km = round(haversine(lat, lon, inc.hospital.latitude, inc.hospital.longitude), 2)
+                                    eta_minutes = max(1, int(round((distance_km / speed_kmph) * 60)))
+
+                                inc.distance_km = distance_km
+                                inc.eta_minutes = eta_minutes
+                                inc.ambulance_last_lat = lat
+                                inc.ambulance_last_lng = lon
+                                inc.ambulance_last_seen_at = datetime.datetime.utcnow()
+
+                            db.commit()
+
+                            for inc in active_incidents:
                                 await manager.send_personal(inc.patient_id, {
                                     "type": "ambulance_location",
                                     "data": {
@@ -206,6 +255,24 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(default=No
                                         "incident_id": inc.id,
                                     }
                                 })
+                                telemetry_event = {
+                                    "type": "ambulance_location_update",
+                                    "data": {
+                                        "incident_id": inc.id,
+                                        "ambulance_id": ambulance.id,
+                                        "latitude": lat,
+                                        "longitude": lon,
+                                        "distance_km": inc.distance_km,
+                                        "eta_minutes": inc.eta_minutes,
+                                        "hospital_ready": inc.hospital_ready,
+                                        "patient_reached_hospital": inc.patient_reached_hospital,
+                                        "ambulance_last_seen_at": inc.ambulance_last_seen_at.isoformat() if inc.ambulance_last_seen_at else None,
+                                    }
+                                }
+                                await manager.send_personal(inc.patient_id, telemetry_event)
+                                await manager.send_personal(user_id, telemetry_event)
+                                if inc.hospital:
+                                    await manager.send_personal(inc.hospital.user_id, telemetry_event)
                     finally:
                         db.close()
 

@@ -2,6 +2,8 @@
 EMS routes: ambulance management, location updates, incident viewing.
 """
 
+import datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -13,8 +15,11 @@ from schemas import (
 )
 from auth import require_role
 from websocket_manager import manager
+from dispatch import haversine
 
 router = APIRouter(prefix="/api/ems", tags=["EMS"])
+
+ASSUMED_AVERAGE_SPEED_KMPH = 35.0
 
 
 @router.get("/ambulance", response_model=AmbulanceOut)
@@ -57,6 +62,36 @@ async def update_location(
     ).all()
 
     for inc in active_incidents:
+        distance_km = None
+        eta_minutes = None
+        if inc.hospital:
+            distance_km = round(haversine(data.latitude, data.longitude, inc.hospital.latitude, inc.hospital.longitude), 2)
+            eta_minutes = max(1, int(round((distance_km / ASSUMED_AVERAGE_SPEED_KMPH) * 60)))
+
+        inc.distance_km = distance_km
+        inc.eta_minutes = eta_minutes
+        inc.ambulance_last_lat = data.latitude
+        inc.ambulance_last_lng = data.longitude
+        inc.ambulance_last_seen_at = datetime.datetime.utcnow()
+
+    db.commit()
+
+    for inc in active_incidents:
+        telemetry_event = {
+            "type": "ambulance_location_update",
+            "data": {
+                "incident_id": inc.id,
+                "ambulance_id": ambulance.id,
+                "latitude": data.latitude,
+                "longitude": data.longitude,
+                "distance_km": inc.distance_km,
+                "eta_minutes": inc.eta_minutes,
+                "hospital_ready": inc.hospital_ready,
+                "patient_reached_hospital": inc.patient_reached_hospital,
+                "ambulance_last_seen_at": inc.ambulance_last_seen_at.isoformat() if inc.ambulance_last_seen_at else None,
+            }
+        }
+
         await manager.send_personal(inc.patient_id, {
             "type": "ambulance_location",
             "data": {
@@ -66,6 +101,10 @@ async def update_location(
                 "incident_id": inc.id,
             }
         })
+        await manager.send_personal(inc.patient_id, telemetry_event)
+        await manager.send_personal(current_user.id, telemetry_event)
+        if inc.hospital:
+            await manager.send_personal(inc.hospital.user_id, telemetry_event)
 
     return ambulance
 
@@ -118,6 +157,15 @@ def get_my_incidents(
             severity=inc.severity.value,
             status=inc.status.value,
             description=inc.description,
+            hospital_ready=inc.hospital_ready,
+            patient_reached_hospital=inc.patient_reached_hospital,
+            eta_minutes=inc.eta_minutes,
+            distance_km=inc.distance_km,
+            ambulance_last_lat=inc.ambulance_last_lat,
+            ambulance_last_lng=inc.ambulance_last_lng,
+            ambulance_last_seen_at=inc.ambulance_last_seen_at,
+            arrived_at_hospital_at=inc.arrived_at_hospital_at,
+            handover_completed_at=inc.handover_completed_at,
             created_at=inc.created_at,
             updated_at=inc.updated_at,
             patient_name=patient.name if patient else None,

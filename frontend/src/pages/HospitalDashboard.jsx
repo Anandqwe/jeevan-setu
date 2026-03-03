@@ -38,6 +38,22 @@ export default function HospitalDashboard() {
   const [incidents, setIncidents] = useState([]);
   const [bedCount, setBedCount] = useState('');
 
+  const mergeIncidentPatch = (patch) => {
+    if (!patch?.incident_id) return;
+    setIncidents((prev) => prev.map((inc) => {
+      if (inc.id !== patch.incident_id) return inc;
+      const next = { ...inc, ...patch };
+      if (patch.latitude != null && patch.longitude != null && inc.ambulance) {
+        next.ambulance = {
+          ...inc.ambulance,
+          latitude: patch.latitude,
+          longitude: patch.longitude,
+        };
+      }
+      return next;
+    }));
+  };
+
   useEffect(() => { loadHospital(); loadIncidents(); }, []);
 
   useEffect(() => {
@@ -48,7 +64,11 @@ export default function HospitalDashboard() {
         loadHospital();
       }),
       wsManager.on('incident_update', () => loadIncidents()),
-      wsManager.on('incident_status_update', () => { loadIncidents(); loadHospital(); }),
+      wsManager.on('incident_status_update', (data) => { mergeIncidentPatch(data); loadHospital(); }),
+      wsManager.on('ambulance_location_update', (data) => mergeIncidentPatch(data)),
+      wsManager.on('hospital_readiness_update', (data) => mergeIncidentPatch(data)),
+      wsManager.on('patient_arrival_update', (data) => mergeIncidentPatch(data)),
+      wsManager.on('patient_handover_update', (data) => { mergeIncidentPatch(data); loadHospital(); }),
     ];
     return () => unsubs.forEach((u) => u());
   }, []);
@@ -72,6 +92,50 @@ export default function HospitalDashboard() {
       setHospital(res.data);
       toast.success('Bed count updated');
     } catch (err) { toast.error(err.response?.data?.detail || 'Failed to update beds'); }
+  };
+
+  const updateReadiness = async (incidentId, ready) => {
+    try {
+      const res = await incidentAPI.updateHospitalReadiness(incidentId, { hospital_ready: ready });
+      mergeIncidentPatch({
+        incident_id: res.data.id,
+        hospital_ready: res.data.hospital_ready,
+        status: res.data.status,
+      });
+      toast.success(`Hospital readiness marked ${ready ? 'ready' : 'not ready'}`);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to update readiness');
+    }
+  };
+
+  const updateArrival = async (incidentId, reached) => {
+    try {
+      const res = await incidentAPI.updateArrival(incidentId, { patient_reached_hospital: reached });
+      mergeIncidentPatch({
+        incident_id: res.data.id,
+        patient_reached_hospital: res.data.patient_reached_hospital,
+        arrived_at_hospital_at: res.data.arrived_at_hospital_at,
+        status: res.data.status,
+      });
+      toast.success(`Arrival ${reached ? 'confirmed' : 'cleared'}`);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to update arrival');
+    }
+  };
+
+  const completeHandover = async (incidentId) => {
+    try {
+      const res = await incidentAPI.updateHandover(incidentId, { handover_completed: true });
+      mergeIncidentPatch({
+        incident_id: res.data.id,
+        handover_completed_at: res.data.handover_completed_at,
+        status: res.data.status,
+      });
+      loadHospital();
+      toast.success('Handover completed');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to complete handover');
+    }
   };
 
   const activeIncidents = incidents.filter((i) => !['completed', 'cancelled'].includes(i.status));
@@ -203,9 +267,50 @@ export default function HospitalDashboard() {
                         Ambulance #{inc.ambulance.id}
                       </p>
                     )}
+                    <p className="flex items-center gap-1.5 text-[var(--text-muted)]">
+                      <Clock size={10} /> ETA: {inc.eta_minutes != null ? `${inc.eta_minutes} min` : 'N/A'} · {inc.distance_km != null ? `${inc.distance_km.toFixed(2)} km` : 'N/A'}
+                    </p>
+                    <p className="text-[var(--text-muted)]">
+                      Ready: <span className={inc.hospital_ready ? 'text-emerald-400' : 'text-amber-400'}>{inc.hospital_ready ? 'Yes' : 'No'}</span>
+                      {' · '}
+                      Arrival: <span className={inc.patient_reached_hospital ? 'text-emerald-400' : 'text-[var(--text-muted)]'}>{inc.patient_reached_hospital ? 'Reached' : 'In transit'}</span>
+                    </p>
+                    <p className="text-[var(--text-muted)]">
+                      Telemetry: {inc.ambulance_last_seen_at
+                        ? `${Math.round((Date.now() - new Date(inc.ambulance_last_seen_at).getTime()) / 1000)}s ago`
+                        : 'No live updates'}
+                    </p>
                     {inc.description && (
                       <p className="text-[var(--text-muted)] italic">{inc.description}</p>
                     )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <motion.button
+                      onClick={() => updateReadiness(inc.id, !inc.hospital_ready)}
+                      whileTap={{ scale: 0.97 }}
+                      className={`px-2 py-2 rounded-lg text-[0.68rem] font-semibold border ${inc.hospital_ready
+                        ? 'text-amber-400 border-amber-500/30 bg-amber-500/10'
+                        : 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10'}`}
+                    >
+                      {inc.hospital_ready ? 'Set Not Ready' : 'Set Ready'}
+                    </motion.button>
+                    <motion.button
+                      onClick={() => updateArrival(inc.id, !inc.patient_reached_hospital)}
+                      whileTap={{ scale: 0.97 }}
+                      className={`px-2 py-2 rounded-lg text-[0.68rem] font-semibold border ${inc.patient_reached_hospital
+                        ? 'text-gray-300 border-white/15 bg-white/5'
+                        : 'text-cyan-400 border-cyan-500/30 bg-cyan-500/10'}`}
+                    >
+                      {inc.patient_reached_hospital ? 'Clear Arrival' : 'Confirm Arrival'}
+                    </motion.button>
+                    <motion.button
+                      onClick={() => completeHandover(inc.id)}
+                      whileTap={{ scale: 0.97 }}
+                      className="col-span-2 px-2 py-2 rounded-lg text-[0.68rem] font-semibold border
+                        text-purple-300 border-purple-500/30 bg-purple-500/10"
+                    >
+                      Complete Handover
+                    </motion.button>
                   </div>
                   <p className="text-[0.55rem] text-[var(--text-muted)]">
                     {new Date(inc.created_at).toLocaleString()}

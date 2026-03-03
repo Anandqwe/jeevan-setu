@@ -92,6 +92,7 @@ export const authAPI = {
 export const emergencyAPI = {
   create: (data) => api.post('/api/emergencies/', data),
   getMy: () => api.get('/api/emergencies/my'),
+  getMockLocation: () => api.get('/api/emergencies/mock-location'),
 };
 
 // ─── EMS ────────────────────────────────────────────────────────────────────────
@@ -112,6 +113,9 @@ export const hospitalAPI = {
 // ─── Incidents ─────────────────────────────────────────────────────────────────
 export const incidentAPI = {
   updateStatus: (id, data) => api.put(`/api/incidents/${id}/status`, data),
+  updateHospitalReadiness: (id, data) => api.put(`/api/incidents/${id}/hospital-readiness`, data),
+  updateArrival: (id, data) => api.put(`/api/incidents/${id}/arrival`, data),
+  updateHandover: (id, data) => api.put(`/api/incidents/${id}/handover`, data),
 };
 
 export default api;
