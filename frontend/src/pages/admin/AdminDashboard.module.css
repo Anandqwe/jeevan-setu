@@ -1,0 +1,285 @@
+.dashboard {
+  padding: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.header h2 {
+  font-size: 1.5rem;
+  color: #1e293b;
+}
+
+.header_right {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.ws_badge {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.ws_badge.connected {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1.5rem;
+  background: #f1f5f9;
+  border-radius: 10px;
+  padding: 0.25rem;
+}
+
+.tab {
+  flex: 1;
+  padding: 0.625rem;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab:hover {
+  color: #1e293b;
+}
+
+.active_tab {
+  background: white;
+  color: #1e293b;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Stats */
+.stat_grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat_card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.25rem;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.stat_number {
+  display: block;
+  font-size: 2rem;
+  font-weight: 800;
+  color: #dc2626;
+}
+
+.stat_label {
+  display: block;
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Override */
+.override_section {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.override_section h3 {
+  font-size: 1.1rem;
+  color: #1e293b;
+  margin-bottom: 1rem;
+}
+
+.override_grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.override_card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.override_card h4 {
+  font-size: 0.9rem;
+  color: #374151;
+  margin-bottom: 0.75rem;
+}
+
+.override_input {
+  display: block;
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+  box-sizing: border-box;
+}
+
+.override_btn {
+  width: 100%;
+  padding: 0.5rem;
+  background: #f59e0b;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.2s;
+}
+
+.override_btn:hover {
+  background: #d97706;
+}
+
+/* Map */
+.map_tab {}
+
+.full_map {
+  height: 600px;
+}
+
+/* Table */
+.incidents_tab {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+.table th {
+  background: #f8fafc;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.table td {
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  color: #374151;
+  border-top: 1px solid #f1f5f9;
+}
+
+.force_btn {
+  padding: 0.375rem 0.75rem;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.force_btn:hover {
+  background: #dc2626;
+}
+
+/* Analytics */
+.analytics_grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.analytics_card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.analytics_card h4 {
+  font-size: 0.9rem;
+  color: #1e293b;
+  margin-bottom: 0.75rem;
+}
+
+.analytics_list {}
+
+.analytics_row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  font-size: 0.85rem;
+  color: #4b5563;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.analytics_row:last-child {
+  border-bottom: none;
+}
+
+.refresh_btn {
+  padding: 0.625rem 1.5rem;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.refresh_btn:hover {
+  background: #2563eb;
+}
+
+.empty {
+  color: #9ca3af;
+  text-align: center;
+  padding: 3rem;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 900px) {
+  .stat_grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .override_grid,
+  .analytics_grid {
+    grid-template-columns: 1fr;
+  }
+}

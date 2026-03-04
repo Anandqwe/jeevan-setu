@@ -1,0 +1,55 @@
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 1rem 0;
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.step_indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 40px;
+}
+
+.dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: white;
+  font-weight: 700;
+  border: 3px solid;
+  flex-shrink: 0;
+}
+
+.current {
+  animation: pulse 1.5s infinite;
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.2);
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+.line {
+  width: 2px;
+  height: 16px;
+  margin: 2px 0;
+}
+
+.label {
+  font-size: 0.8rem;
+  padding-top: 3px;
+  line-height: 1.3;
+}
