@@ -311,7 +311,6 @@ const EMSDashboard = () => {
             routeColor={routeColor}
             animateAmbulance={!!shouldAnimate}
             hideStaticAmbulance={!!shouldAnimate}
-            animationDuration={6000}
             fitAllMarkers={!!primaryIncident}
             className={styles.map}
           />

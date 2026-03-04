@@ -126,14 +126,5 @@
 :global(.ambulance-anim-icon) {
   font-size: 32px;
   filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4));
-  animation: ambulanceBounce 0.6s ease-in-out infinite alternate;
-}
-
-@keyframes ambulanceBounce {
-  0% {
-    transform: translateY(0);
-  }
-  100% {
-    transform: translateY(-3px);
-  }
+  transition: transform 0.15s linear;
 }
