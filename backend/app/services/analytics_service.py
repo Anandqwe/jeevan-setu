@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.incident import Incident, IncidentStatus, IncidentSeverity
 from app.models.ambulance import Ambulance, AmbulanceStatus
 from app.models.hospital import Hospital
+from app.websocket.manager import manager
 
 
 class AnalyticsService:
@@ -53,48 +54,58 @@ class AnalyticsService:
             )
             status_counts[status.value] = result.scalar() or 0
 
-        # Ambulance status counts
+        # Ambulance stats
         ambulance_total_result = await self.db.execute(select(func.count(Ambulance.id)))
         total_ambulances = ambulance_total_result.scalar() or 0
 
-        available_result = await self.db.execute(
-            select(func.count(Ambulance.id)).where(
-                Ambulance.status == AmbulanceStatus.AVAILABLE
+        ambulance_status_counts = {}
+        for amb_status in AmbulanceStatus:
+            result = await self.db.execute(
+                select(func.count(Ambulance.id)).where(
+                    Ambulance.status == amb_status
+                )
             )
-        )
-        available_ambulances = available_result.scalar() or 0
-
-        busy_result = await self.db.execute(
-            select(func.count(Ambulance.id)).where(
-                Ambulance.status == AmbulanceStatus.BUSY
-            )
-        )
-        busy_ambulances = busy_result.scalar() or 0
+            ambulance_status_counts[amb_status.value] = result.scalar() or 0
 
         # Hospital stats
         hospital_total_result = await self.db.execute(select(func.count(Hospital.id)))
         total_hospitals = hospital_total_result.scalar() or 0
 
-        beds_result = await self.db.execute(select(func.sum(Hospital.available_icu_beds)))
-        total_available_beds = beds_result.scalar() or 0
+        available_beds_result = await self.db.execute(
+            select(func.sum(Hospital.available_icu_beds))
+        )
+        total_available_beds = available_beds_result.scalar() or 0
 
-        # Average response time (time from REQUESTED to AMBULANCE_ASSIGNED)
-        # Simplified: just return basic stats for now
-        avg_response_time = None
+        total_beds_result = await self.db.execute(
+            select(func.sum(Hospital.total_icu_beds))
+        )
+        total_icu_beds = total_beds_result.scalar() or 0
+
+        # Connected WebSocket clients
+        ws_count = 0
+        try:
+            ws_count = manager.connected_count
+        except Exception:
+            pass
 
         return {
             "total_incidents": total_incidents,
             "active_incidents": active_incidents,
             "completed_incidents": completed_incidents,
-            "severity_counts": severity_counts,
-            "status_counts": status_counts,
+            "incidents_by_severity": severity_counts,
+            "incidents_by_status": status_counts,
             "total_ambulances": total_ambulances,
-            "available_ambulances": available_ambulances,
-            "busy_ambulances": busy_ambulances,
+            "available_ambulances": ambulance_status_counts.get("available", 0),
+            "busy_ambulances": ambulance_status_counts.get("busy", 0),
+            "ambulances_by_status": ambulance_status_counts,
             "total_hospitals": total_hospitals,
-            "total_available_beds": total_available_beds,
-            "avg_response_time_seconds": avg_response_time,
-            "connected_websockets": manager.connected_count if manager else 0,
+            "total_icu_beds": total_icu_beds,
+            "available_icu_beds": total_available_beds,
+            "bed_occupancy_percent": round(
+                ((total_icu_beds - total_available_beds) / total_icu_beds * 100)
+                if total_icu_beds > 0 else 0, 1
+            ),
+            "connected_websockets": ws_count,
         }
 
 
