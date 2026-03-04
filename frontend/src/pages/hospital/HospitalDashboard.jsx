@@ -8,7 +8,16 @@ import useTrackingStore from '../../stores/trackingStore';
 import { updateHospitalBeds } from '../../api/hospitals';
 import TrackingMap from '../../components/maps/TrackingMap';
 import StatusBadge from '../../components/common/StatusBadge';
+import { SEVERITY_COLORS } from '../../utils/constants';
 import styles from './HospitalDashboard.module.css';
+
+const getBedBarColor = (available, total) => {
+  if (total === 0) return '#94a3b8';
+  const pct = available / total;
+  if (pct > 0.5) return '#10b981';    // green — plenty
+  if (pct > 0.25) return '#f59e0b';   // yellow — moderate
+  return '#ef4444';                     // red — critical
+};
 
 const HospitalDashboard = () => {
   const { user } = useAuth('HOSPITAL');
@@ -23,7 +32,6 @@ const HospitalDashboard = () => {
     fetchHospitals();
   }, []);
 
-  // Find this hospital
   const myHospital = hospitals.find((h) => h.user_id === user?.id);
 
   useEffect(() => {
@@ -69,8 +77,12 @@ const HospitalDashboard = () => {
   const incomingPatients = incidents.filter(
     (i) => ['EN_ROUTE_TO_HOSPITAL', 'ARRIVED_AT_HOSPITAL', 'TREATMENT_STARTED'].includes(i.status)
   );
+  const completedPatients = incidents.filter((i) => i.status === 'COMPLETED');
+  const occupiedBeds = myHospital ? myHospital.total_icu_beds - myHospital.available_icu_beds : 0;
+  const occupancyPct = myHospital && myHospital.total_icu_beds > 0
+    ? Math.round((occupiedBeds / myHospital.total_icu_beds) * 100)
+    : 0;
 
-  // Map markers for patient origin locations
   const patientMarkers = useMemo(() => {
     return incomingPatients.map((i) => ({
       latitude: i.latitude,
@@ -80,14 +92,9 @@ const HospitalDashboard = () => {
     }));
   }, [incomingPatients]);
 
-  // Hospital self marker
   const hospitalSelfMarker = useMemo(() => {
     if (!myHospital) return [];
-    return [{
-      ...myHospital,
-      available_icu_beds: myHospital.available_icu_beds,
-      total_icu_beds: myHospital.total_icu_beds,
-    }];
+    return [{ ...myHospital }];
   }, [myHospital]);
 
   const mapCenter = useMemo(() => {
@@ -95,14 +102,45 @@ const HospitalDashboard = () => {
     return [19.076, 72.8777];
   }, [myHospital]);
 
+  const bedColor = myHospital ? getBedBarColor(myHospital.available_icu_beds, myHospital.total_icu_beds) : '#94a3b8';
+
   return (
     <div className={styles.dashboard}>
       <div className={styles.header}>
-        <h2>Hospital Dashboard</h2>
+        <div>
+          <h2>Hospital Dashboard</h2>
+          {myHospital && (
+            <span className={styles.hospital_subtitle}>
+              {myHospital.name} — {myHospital.specialty?.replace(/_/g, ' ')}
+            </span>
+          )}
+        </div>
         <span className={`${styles.ws_badge} ${connected ? styles.connected : ''}`}>
           {connected ? '🟢 Live' : '🔴 Offline'}
         </span>
       </div>
+
+      {/* Stats Cards */}
+      {myHospital && (
+        <div className={styles.stats_row}>
+          <div className={styles.stat_card}>
+            <span className={styles.stat_value}>{incomingPatients.length}</span>
+            <span className={styles.stat_label}>Incoming</span>
+          </div>
+          <div className={styles.stat_card}>
+            <span className={styles.stat_value}>{completedPatients.length}</span>
+            <span className={styles.stat_label}>Treated</span>
+          </div>
+          <div className={styles.stat_card}>
+            <span className={styles.stat_value} style={{ color: bedColor }}>{occupancyPct}%</span>
+            <span className={styles.stat_label}>Occupied</span>
+          </div>
+          <div className={styles.stat_card}>
+            <span className={styles.stat_value}>{myHospital.available_icu_beds}</span>
+            <span className={styles.stat_label}>ICU Free</span>
+          </div>
+        </div>
+      )}
 
       <div className={styles.grid}>
         {/* Bed Management */}
@@ -110,14 +148,14 @@ const HospitalDashboard = () => {
           <h3>🛏️ Bed Management</h3>
           {myHospital ? (
             <>
-              <div className={styles.hospital_info}>
-                <p><strong>{myHospital.name}</strong></p>
-                <p>Specialty: {myHospital.specialty}</p>
-                <p>Total ICU Beds: {myHospital.total_icu_beds}</p>
-              </div>
               <div className={styles.bed_control}>
                 <label>Available ICU Beds:</label>
                 <div className={styles.bed_input_group}>
+                  <button
+                    className={styles.bed_step_btn}
+                    onClick={() => setBedCount(String(Math.max(0, parseInt(bedCount || '0') - 1)))}
+                    disabled={parseInt(bedCount || '0') <= 0}
+                  >−</button>
                   <input
                     type="number"
                     min="0"
@@ -126,45 +164,80 @@ const HospitalDashboard = () => {
                     onChange={(e) => setBedCount(e.target.value)}
                     className={styles.bed_input}
                   />
+                  <button
+                    className={styles.bed_step_btn}
+                    onClick={() => setBedCount(String(Math.min(myHospital.total_icu_beds, parseInt(bedCount || '0') + 1)))}
+                    disabled={parseInt(bedCount || '0') >= myHospital.total_icu_beds}
+                  >+</button>
                   <button onClick={handleUpdateBeds} className={styles.update_btn}>
                     Update
                   </button>
                 </div>
               </div>
               <div className={styles.bed_visual}>
+                <div className={styles.bed_labels}>
+                  <span>Occupied: {occupiedBeds}</span>
+                  <span>Available: {myHospital.available_icu_beds}</span>
+                </div>
                 <div className={styles.bed_bar}>
                   <div
                     className={styles.bed_fill}
                     style={{
-                      width: `${(myHospital.available_icu_beds / myHospital.total_icu_beds) * 100}%`,
+                      width: `${occupancyPct}%`,
+                      background: bedColor,
                     }}
                   />
                 </div>
-                <span className={styles.bed_text}>
-                  {myHospital.available_icu_beds} / {myHospital.total_icu_beds} available
-                </span>
+                <div className={styles.bed_bar_label}>
+                  <span>{occupancyPct}% occupied — {myHospital.total_icu_beds} total</span>
+                </div>
               </div>
             </>
           ) : (
-            <p className={styles.empty}>No hospital profile linked to this account</p>
+            <div className={styles.empty}>
+              <span className={styles.empty_icon}>🏥</span>
+              <p>No hospital profile linked to this account</p>
+            </div>
           )}
         </div>
 
         {/* Incoming Patients */}
         <div className={styles.incoming_card}>
-          <h3>🚑 Incoming Patients ({incomingPatients.length})</h3>
+          <h3>🚑 Incoming Patients {incomingPatients.length > 0 && <span className={styles.count_badge}>{incomingPatients.length}</span>}</h3>
           {incomingPatients.length === 0 ? (
-            <p className={styles.empty}>No incoming patients</p>
+            <div className={styles.empty}>
+              <span className={styles.empty_icon}>✅</span>
+              <p>No incoming patients</p>
+              <p className={styles.empty_hint}>All clear</p>
+            </div>
           ) : (
             incomingPatients.map((incident) => (
-              <div key={incident.id} className={styles.patient_card}>
+              <div
+                key={incident.id}
+                className={styles.patient_card}
+                style={{ borderLeftColor: SEVERITY_COLORS[incident.severity] }}
+              >
                 <div className={styles.patient_header}>
-                  <span>Incident #{incident.id}</span>
+                  <div className={styles.patient_title}>
+                    <span>#{incident.id}</span>
+                    <span
+                      className={styles.severity_dot}
+                      style={{ background: SEVERITY_COLORS[incident.severity] }}
+                    />
+                    <span className={styles.severity_text} style={{ color: SEVERITY_COLORS[incident.severity] }}>
+                      {incident.severity}
+                    </span>
+                  </div>
                   <StatusBadge status={incident.status} size="small" />
                 </div>
                 <div className={styles.patient_body}>
-                  <p>Severity: <strong>{incident.severity}</strong></p>
-                  {incident.description && <p>{incident.description}</p>}
+                  {incident.description && <p className={styles.patient_desc}>📝 {incident.description}</p>}
+                  <p className={styles.patient_location}>
+                    📍 Origin: {incident.latitude?.toFixed(4)}, {incident.longitude?.toFixed(4)}
+                  </p>
+                  {incident.ambulance_id && (
+                    <p className={styles.patient_ambulance}>🚑 Ambulance #{incident.ambulance_id}</p>
+                  )}
                 </div>
                 <div className={styles.patient_actions}>
                   {incident.status === 'ARRIVED_AT_HOSPITAL' && (
@@ -172,7 +245,7 @@ const HospitalDashboard = () => {
                       className={styles.intake_btn}
                       onClick={() => handleConfirmIntake(incident.id)}
                     >
-                      Confirm Intake
+                      ✅ Confirm Intake
                     </button>
                   )}
                   {incident.status === 'TREATMENT_STARTED' && (
@@ -180,8 +253,11 @@ const HospitalDashboard = () => {
                       className={styles.complete_btn}
                       onClick={() => handleComplete(incident.id)}
                     >
-                      Mark Completed
+                      ✅ Mark Completed
                     </button>
+                  )}
+                  {incident.status === 'EN_ROUTE_TO_HOSPITAL' && (
+                    <span className={styles.en_route_label}>🚑 En Route...</span>
                   )}
                 </div>
               </div>
@@ -190,7 +266,7 @@ const HospitalDashboard = () => {
         </div>
       </div>
 
-      {/* Map section — full width */}
+      {/* Map section */}
       <div className={styles.map_section}>
         <h3>📍 Incoming Ambulances</h3>
         <TrackingMap
@@ -203,6 +279,28 @@ const HospitalDashboard = () => {
           className={styles.map}
         />
       </div>
+
+      {/* Completed Patients History */}
+      {completedPatients.length > 0 && (
+        <details className={styles.history_collapse}>
+          <summary>Completed Patients ({completedPatients.length})</summary>
+          <div className={styles.history_list}>
+            {completedPatients.map((i) => (
+              <div key={i.id} className={styles.history_item}>
+                <span className={styles.history_id}>#{i.id}</span>
+                <span
+                  className={styles.severity_dot}
+                  style={{ background: SEVERITY_COLORS[i.severity] }}
+                />
+                <span>{i.severity}</span>
+                <span className={styles.history_time}>
+                  {new Date(i.updated_at).toLocaleTimeString()}
+                </span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
     </div>
   );
 };

@@ -8,7 +8,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .header h2 {
@@ -58,6 +58,45 @@
   color: #16a34a;
 }
 
+/* ── Stats Row ── */
+.stats_row {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.stat_card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.stat_card.stat_active {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.stat_value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.stat_label {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* ── Grid ── */
 .grid {
   display: grid;
   grid-template-columns: 1fr 1.5fr;
@@ -69,14 +108,27 @@
   font-size: 1rem;
   color: #1e293b;
   margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
+.count_badge {
+  background: #8b5cf6;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+}
+
+/* ── Assignment Cards ── */
 .assignment_card {
   background: white;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   padding: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
@@ -93,18 +145,80 @@
   margin-bottom: 0.75rem;
 }
 
+.card_title_row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .incident_id {
   font-weight: 700;
   font-size: 1rem;
   color: #1e293b;
 }
 
-.card_body p {
-  font-size: 0.85rem;
-  color: #4b5563;
-  margin-bottom: 0.375rem;
+.severity_dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
 }
 
+.severity_text {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.card_body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.info_row {
+  display: flex;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: #4b5563;
+  align-items: flex-start;
+}
+
+.info_row span:first-child {
+  flex-shrink: 0;
+}
+
+/* ── Hospital Info in Card ── */
+.hospital_info {
+  margin-top: 0.5rem;
+  padding: 0.6rem;
+  background: #f0fdf4;
+  border-radius: 8px;
+  border: 1px solid #bbf7d0;
+}
+
+.hospital_name {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #166534;
+  margin-bottom: 0.25rem;
+}
+
+.hospital_meta {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  color: #4b5563;
+}
+
+.hospital_coords {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  margin-top: 0.2rem;
+}
+
+/* ── Action Button ── */
 .action_btn {
   margin-top: 0.75rem;
   width: 100%;
@@ -118,13 +232,70 @@
   font-size: 0.875rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  transition: background 0.2s;
+  transition: background 0.2s, transform 0.1s;
 }
 
 .action_btn:hover {
   background: #059669;
+  transform: translateY(-1px);
 }
 
+.action_btn:active {
+  transform: translateY(0);
+}
+
+/* ── History Collapse ── */
+.history_collapse {
+  margin-top: 0.75rem;
+  background: white;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+
+.history_collapse summary {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 500;
+  user-select: none;
+}
+
+.history_collapse summary:hover {
+  background: #f8fafc;
+}
+
+.history_collapse[open] summary {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.history_list {
+  padding: 0.5rem 0;
+}
+
+.history_item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1rem;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.history_id {
+  font-weight: 600;
+  color: #475569;
+  min-width: 30px;
+}
+
+.history_time {
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+/* ── Map Section ── */
 .map_section {}
 
 .route_info {
@@ -146,13 +317,29 @@
   height: 600px;
 }
 
+/* ── Empty State ── */
 .empty {
-  color: #9ca3af;
   text-align: center;
   padding: 3rem;
   background: white;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
+  color: #9ca3af;
+}
+
+.empty_icon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.empty p {
+  margin: 0.25rem 0;
+}
+
+.empty_hint {
+  font-size: 0.8rem;
+  color: #c0c7d1;
 }
 
 @media (max-width: 900px) {
@@ -161,5 +348,11 @@
   }
   .map {
     height: 400px;
+  }
+  .stats_row {
+    flex-wrap: wrap;
+  }
+  .stat_card {
+    min-width: calc(50% - 0.75rem);
   }
 }
